@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Cross-client OAuth2 sample</string>
+	<string name="error_notauthorized">Necessary permissions are not given to complete the task</string>
+    
+</resources>
