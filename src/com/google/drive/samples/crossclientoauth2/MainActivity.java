@@ -18,7 +18,7 @@ import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecovera
 
 public class MainActivity extends Activity {
 
-  final private String CLIENT_ID = "498930908887.apps.googleusercontent.com";
+  final private String CLIENT_ID = "abc123.apps.googleusercontent.com";
   final private List<String> SCOPES = Arrays.asList(new String[]{
       "https://www.googleapis.com/auth/plus.login",
       "https://www.googleapis.com/auth/drive"
