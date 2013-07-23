@@ -9,12 +9,12 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.EditText;
 
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
 
 public class MainActivity extends Activity {
 
@@ -25,23 +25,34 @@ public class MainActivity extends Activity {
   });
   
   private GoogleAccountCredential mCredential;
-  private TextView mResultTextView;
+  
+  private EditText mExchangeCodeEditText;
+  private EditText mIdTokenEditText;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     
     setContentView(R.layout.activity_main);
-    mResultTextView = (TextView) findViewById(R.id.textViewResult);
+    mExchangeCodeEditText = (EditText) findViewById(R.id.editTextExchangeCode);
+    mIdTokenEditText = (EditText) findViewById(R.id.editTextIdToken);
     
     // initiate a credential object with drive and plus.login scopes
     // cross identity is only available for tokens retrieved with plus.login
     mCredential = GoogleAccountCredential.usingOAuth2(this, null);
-    startActivityForResult(mCredential.newChooseAccountIntent(), REQUEST_ACCOUNT_PICKER);
+    
+    // user needs to select an account, start account picker
+    startActivityForResult(
+        mCredential.newChooseAccountIntent(), REQUEST_ACCOUNT_PICKER);
   }
 
+  /**
+   * Handles the callbacks from result returning
+   * account picker and permission requester activities.
+   */
   @Override
-  protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
+  protected void onActivityResult(
+      final int requestCode, final int resultCode, final Intent data) {
     switch (requestCode) {
     // user has  returned back from the account picker,
     // initiate the rest of the flow with the account he/she has chosen.
@@ -50,16 +61,16 @@ public class MainActivity extends Activity {
       if (accountName != null) {
         mCredential.setSelectedAccountName(accountName);
         new RetrieveExchangeCodeAsyncTask().execute();
+        new RetrieveIdTokenAsyncTask().execute();
       }
       break;
     // user has returned back from the permissions screen,
     // if he/she has given enough permissions, retry the the request.
     case REQUEST_AUTHORIZATION:
       if (resultCode == Activity.RESULT_OK) {
+        // replay the same operations
         new RetrieveExchangeCodeAsyncTask().execute();
-      } else {
-        String msg = getString(R.string.error_notauthorized);
-        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+        new RetrieveIdTokenAsyncTask().execute();
       }
       break;
     }
@@ -69,12 +80,29 @@ public class MainActivity extends Activity {
    * Retrieves the exchange code to be sent to the
    * server-side component of the app.
    */
-  public class RetrieveExchangeCodeAsyncTask extends RetrieveTokenAsyncTask {
-
+  public class RetrieveExchangeCodeAsyncTask
+      extends AsyncTask<Void, Boolean, String> {
+    
     @Override
-    protected String getScope() {
-      return String.format("oauth2:server:client_id:%s:api_scope:%s",
+    protected String doInBackground(Void... params) {
+      String scope = String.format("oauth2:server:client_id:%s:api_scope:%s",
           CLIENT_ID, TextUtils.join(" ", SCOPES));
+      try {
+        return GoogleAuthUtil.getToken(
+            MainActivity.this, mCredential.getSelectedAccountName(), scope);
+      } catch (UserRecoverableAuthException e) {
+        startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
+      } catch (Exception e) {
+        e.printStackTrace(); // TODO: handle the exception
+      }
+      return null;
+    }
+    
+    @Override
+    protected void onPostExecute(String code) {
+      // exchange code with server-side to retrieve an additional
+      // access token on the server-side.
+      mExchangeCodeEditText.setText(code);
     }
   }
 
@@ -83,42 +111,31 @@ public class MainActivity extends Activity {
    * regular client-side authorization flow. The jwt payload needs to be
    * sent to the server-side component.
    */
-  public class RetrieveIdTokenAsyncTask extends RetrieveTokenAsyncTask {
+  public class RetrieveIdTokenAsyncTask
+      extends AsyncTask<Void, Boolean, String> {
 
     @Override
-    protected String getScope() {
-      return "audience:server:client_id:" + CLIENT_ID;
-    }
-  }
-  
-  abstract public class RetrieveTokenAsyncTask extends
-      AsyncTask<Void, Boolean, String> {
-    
-    abstract protected String getScope();
-    
-    @Override
     protected String doInBackground(Void... params) {
+      String scope = "audience:server:client_id:" + CLIENT_ID;
       try {
         return GoogleAuthUtil.getToken(
-            MainActivity.this, mCredential.getSelectedAccountName(), getScope());
-      } catch (UserRecoverableAuthException e) {
+            MainActivity.this, mCredential.getSelectedAccountName(), scope);
+      } catch(UserRecoverableAuthIOException e) {
         startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
       } catch (Exception e) {
-        // TODO: handle the exception
-        e.printStackTrace();
+        e.printStackTrace(); // TODO: handle the exception
       }
       return null;
     }
-    
+
     @Override
-    protected void onPostExecute(String result) {
-      super.onPostExecute(result);
-      mResultTextView.setText(result);
+    protected void onPostExecute(String idToken) {
+      // exchange encrypted idToken with server-side to identify the user
+      mIdTokenEditText.setText(idToken);
     }
   }
-
+  
   private static final int REQUEST_ACCOUNT_PICKER = 100;
   private static final int REQUEST_AUTHORIZATION = 200;
-  
 
 }
