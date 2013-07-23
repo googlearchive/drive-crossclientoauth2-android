@@ -25,8 +25,7 @@ final private List<String> SCOPES = Arrays.asList(new String[]{
 ## Retrieve exchange code for server-side
 
 ~~~java
-String scope = String.format("oauth2:server:client_id:%s:api_scope:%s",
-          CLIENT_ID, TextUtils.join(" ", SCOPES));
+String scope = String.format("oauth2:server:client_id:%s:api_scope:%s", CLIENT_ID, TextUtils.join(" ", SCOPES));
 String exchangeCode = GoogleAuthUtil.getToken(context, accountName, scope);
 ~~~
 
