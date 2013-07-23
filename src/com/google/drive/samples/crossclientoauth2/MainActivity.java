@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
       if (accountName != null) {
         mCredential.setSelectedAccountName(accountName);
         new RetrieveExchangeCodeAsyncTask().execute();
-        new RetrieveIdTokenAsyncTask().execute();
+        new RetrieveJwtAsyncTask().execute();
       }
       break;
     // user has returned back from the permissions screen,
@@ -70,7 +70,7 @@ public class MainActivity extends Activity {
       if (resultCode == Activity.RESULT_OK) {
         // replay the same operations
         new RetrieveExchangeCodeAsyncTask().execute();
-        new RetrieveIdTokenAsyncTask().execute();
+        new RetrieveJwtAsyncTask().execute();
       }
       break;
     }
@@ -107,11 +107,11 @@ public class MainActivity extends Activity {
   }
 
   /**
-   * Retrieves the id_token to identify the user without the
+   * Retrieves a JWT to identify the user without the
    * regular client-side authorization flow. The jwt payload needs to be
    * sent to the server-side component.
    */
-  public class RetrieveIdTokenAsyncTask
+  public class RetrieveJwtAsyncTask
       extends AsyncTask<Void, Boolean, String> {
 
     @Override
